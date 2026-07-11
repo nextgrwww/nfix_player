@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fmovies Netflix‑Style + VLC Shortcuts + Resume
 // @namespace    http://tampermonkey.net/
-// @version      10.0
-// @description  Red border, black background, VLC shortcuts, help, poster, resume
+// @version      10.1
+// @description  Red border, black background, VLC shortcuts, help, poster, resume, back arrow, refined seek
 // @author       You
 // @match        https://new-fmovies.cam/*
 // @grant        none
@@ -492,6 +492,38 @@
             .fm-help-popup .fm-close-help:hover {
                 color: white;
             }
+            /* ---------- NEW: Back arrow ---------- */
+            .fm-back-arrow {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                z-index: 1000;
+                cursor: pointer;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                background: rgba(0,0,0,0.6);
+                border-radius: 50%;
+                width: 44px;
+                height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 26px;
+                font-weight: bold;
+                text-shadow: 0 0 10px rgba(0,0,0,0.8);
+                border: none;
+                outline: none;
+                pointer-events: none; /* initially no pointer, enabled on hover */
+            }
+            .fm-back-arrow:hover {
+                background: rgba(255,255,255,0.2);
+                transform: scale(1.05);
+            }
+            .jwplayer:hover .fm-back-arrow {
+                opacity: 1;
+                pointer-events: auto;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -655,7 +687,7 @@
         } catch (e) {}
     }
 
-    // ----- Keyboard shortcuts (VLC style) -----
+    // ----- Keyboard shortcuts (VLC style, refined) -----
     function setupKeyboardShortcuts() {
         document.addEventListener('keydown', function(e) {
             // Ignore if focus is on an input/textarea
@@ -672,14 +704,20 @@
                     if (video.paused) video.play(); else video.pause();
                     handled = true;
                     break;
-                case 'ArrowRight': // Right: +10s
+                case 'ArrowRight': // Right: +5s (Shift=2s, Ctrl=10s)
                     e.preventDefault();
-                    video.currentTime = Math.min(video.currentTime + 10, video.duration || 0);
+                    let stepR = 5;
+                    if (e.shiftKey) stepR = 2;
+                    else if (e.ctrlKey) stepR = 10;
+                    video.currentTime = Math.min(video.currentTime + stepR, video.duration || 0);
                     handled = true;
                     break;
-                case 'ArrowLeft': // Left: -10s
+                case 'ArrowLeft': // Left: -5s (Shift=2s, Ctrl=10s)
                     e.preventDefault();
-                    video.currentTime = Math.max(video.currentTime - 10, 0);
+                    let stepL = 5;
+                    if (e.shiftKey) stepL = 2;
+                    else if (e.ctrlKey) stepL = 10;
+                    video.currentTime = Math.max(video.currentTime - stepL, 0);
                     handled = true;
                     break;
                 case 'ArrowUp': // Up: volume +5%
@@ -759,7 +797,9 @@
             <h4>⌨️ Keyboard Shortcuts</h4>
             <table>
                 <tr><td>Space</td><td>Play / Pause</td></tr>
-                <tr><td>← / →</td><td>Seek -10s / +10s</td></tr>
+                <tr><td>← / →</td><td>Seek -5s / +5s</td></tr>
+                <tr><td>Shift + ← / →</td><td>Seek -2s / +2s</td></tr>
+                <tr><td>Ctrl + ← / →</td><td>Seek -10s / +10s</td></tr>
                 <tr><td>↑ / ↓</td><td>Volume +5% / -5%</td></tr>
                 <tr><td>F</td><td>Toggle Fullscreen</td></tr>
                 <tr><td>M</td><td>Mute / Unmute</td></tr>
@@ -783,6 +823,25 @@
                 }
             });
         }, 0);
+    }
+
+    // ----- NEW: Add back arrow button (Netflix style) -----
+    function addBackArrow() {
+        const player = document.querySelector('.jwplayer');
+        if (!player) return;
+        if (player.querySelector('.fm-back-arrow')) return; // already exists
+
+        const arrow = document.createElement('div');
+        arrow.className = 'fm-back-arrow';
+        arrow.innerHTML = '‹'; // using a left arrow symbol (or use SVG)
+        arrow.title = 'Go Back';
+        arrow.addEventListener('click', (e) => {
+            e.stopPropagation();
+            history.back();
+        });
+        // Ensure player is relatively positioned for absolute child
+        player.style.position = 'relative';
+        player.appendChild(arrow);
     }
 
     // ----- Netflix‑style Header CSS (unchanged) -----
@@ -1142,6 +1201,9 @@
 
         // Apply poster background
         applyPosterBackground();
+
+        // ----- NEW: Add back arrow -----
+        addBackArrow();
 
         const wrapper = fitPlayerToViewport();
         if (wrapper) {
