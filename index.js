@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fmovies Netflix‑Style + VLC Shortcuts + Resume
 // @namespace    http://tampermonkey.net/
-// @version      10.1
+// @version      10.2
 // @description  Red border, black background, VLC shortcuts, help, poster, resume, back arrow, refined seek
 // @author       You
 // @match        https://new-fmovies.cam/*
@@ -689,6 +689,7 @@
 
     // ----- Keyboard shortcuts (VLC style, refined) -----
     function setupKeyboardShortcuts() {
+        // Use capture phase to intercept before JW Player's default handler
         document.addEventListener('keydown', function(e) {
             // Ignore if focus is on an input/textarea
             const tag = document.activeElement.tagName;
@@ -701,11 +702,15 @@
             switch (e.key) {
                 case ' ': // Space: play/pause
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                     if (video.paused) video.play(); else video.pause();
                     handled = true;
                     break;
                 case 'ArrowRight': // Right: +5s (Shift=2s, Ctrl=10s)
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                     let stepR = 5;
                     if (e.shiftKey) stepR = 2;
                     else if (e.ctrlKey) stepR = 10;
@@ -714,6 +719,8 @@
                     break;
                 case 'ArrowLeft': // Left: -5s (Shift=2s, Ctrl=10s)
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                     let stepL = 5;
                     if (e.shiftKey) stepL = 2;
                     else if (e.ctrlKey) stepL = 10;
@@ -722,12 +729,16 @@
                     break;
                 case 'ArrowUp': // Up: volume +5%
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                     if (video.volume < 0.95) video.volume = Math.min(video.volume + 0.05, 1);
                     else video.volume = 1;
                     handled = true;
                     break;
                 case 'ArrowDown': // Down: volume -5%
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                     if (video.volume > 0.05) video.volume = Math.max(video.volume - 0.05, 0);
                     else video.volume = 0;
                     handled = true;
@@ -735,6 +746,8 @@
                 case 'f':
                 case 'F':
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                     if (!document.fullscreenElement) {
                         const player = document.querySelector('.jwplayer') || document.querySelector('#fm-player-overlay');
                         if (player) player.requestFullscreen().catch(() => {});
@@ -746,6 +759,8 @@
                 case 'm':
                 case 'M':
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                     video.muted = !video.muted;
                     handled = true;
                     break;
@@ -762,7 +777,7 @@
                     resumeNotification = null;
                 }
             }
-        });
+        }, { capture: true });  // capture phase to override JW Player's handler
     }
 
     // ----- Apply poster background -----
